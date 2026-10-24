@@ -1,0 +1,1298 @@
+<!doctype html>
+<!--
+==============================================================================
+  DAILY GAMES HUB: HOW TO CUSTOMISE
+==============================================================================
+  Everything lives in this one file. Open it in any text editor.
+
+  ADD / REMOVE A GAME
+    Find the `GAMES` array in the <script> near the bottom (search "const GAMES").
+    Each game is one line-ish object:
+
+      { name: 'Wordle', url: 'https://...', category: 'word', desc: 'Guess the 5-letter word' },
+
+    - category must be one of the ids in `CATEGORIES`: 'word', 'geo', 'logic', 'science'.
+    - Optional `id`: a stable key used for history. If omitted, it's derived from
+      the name ("Killer Sudoku" -> "killer-sudoku"). If you RENAME a game and want
+      to keep its history/streak, add `id: 'old-id'` to it.
+    - Optional `defaultMode`: 'daily' | 'bonus' | 'hidden' (used until you change
+      it in Customise mode).
+    To remove a game, delete its line. Its past history stays in storage, and past
+    days still count correctly, because each day stores its own list of Daily games.
+
+  CHANGE DEFAULTS
+    - DEFAULT_MODE   : mode for games you haven't configured (default 'bonus').
+    - TIMEZONE       : the timezone "today" is calculated in (default Pacific/Auckland).
+    - CATEGORIES     : section order, labels and which CSS accent each uses.
+    - Colours        : CSS variables in :root (light) and [data-theme="dark"].
+
+  ADD A CATEGORY
+    Add an entry to CATEGORIES, then add `--cat-<id>` colour variables for both
+    themes and a `.cat-<id>` rule in the CSS (copy an existing one).
+
+  STORAGE / BACKEND
+    All persistence goes through the `Storage` module (search "const Storage").
+    Swap its load()/save() for API calls to move to a backend later.
+==============================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Games Hub</title>
+<meta name="description" content="Track the daily puzzle games I play, with streaks.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f1ea">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  // Set the system theme before first paint to avoid a flash.
+  // The main script below applies any saved manual choice.
+  document.documentElement.dataset.theme =
+    window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+</script>
+<style>
+/* ===========================================================================
+   THEME TOKENS
+   =========================================================================== */
+:root {
+  --bg: #f5f1ea;
+  --surface: #ffffff;
+  --surface-2: #efe9df;
+  --text: #1c1a17;
+  --muted: #5d564d;
+  --border: #ded6c9;
+  --focus: #1d5fd1;
+  --done: #23794a;
+  --on-done: #ffffff;
+  --flame: #d4520b;
+  --missed: #d9cfc0;
+  --shadow: 0 1px 2px rgb(40 30 10 / .06), 0 4px 14px rgb(40 30 10 / .06);
+
+  /* Category accents (also used as button backgrounds, so keep contrast with --on-accent) */
+  --cat-word: #a8500a;     /* marigold */
+  --cat-geo: #0b6e66;      /* deep teal */
+  --cat-logic: #5a3cc2;    /* violet */
+  --cat-science: #b8304a;  /* coral red */
+  --on-accent: #ffffff;
+
+  --radius: 16px;
+  --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg: #121110;
+  --surface: #1c1a18;
+  --surface-2: #262320;
+  --text: #f3efe9;
+  --muted: #b3aa9e;
+  --border: #39342e;
+  --focus: #7fb0ff;
+  --done: #4cc47f;
+  --on-done: #0d1a12;
+  --flame: #ff8a3d;
+  --missed: #3a3530;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 6px 18px rgb(0 0 0 / .25);
+
+  --cat-word: #f2a640;
+  --cat-geo: #35d0bb;
+  --cat-logic: #a897ff;
+  --cat-science: #ff7d92;
+  --on-accent: #15130f;
+}
+
+/* Each card / section picks its accent from its category */
+.cat-word    { --accent: var(--cat-word); }
+.cat-geo     { --accent: var(--cat-geo); }
+.cat-logic   { --accent: var(--cat-logic); }
+.cat-science { --accent: var(--cat-science); }
+
+/* ===========================================================================
+   BASE
+   =========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; padding: 0; border: 0;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+/* ===========================================================================
+   HEADER
+   =========================================================================== */
+.site-header { padding: 22px 0 8px; }
+.header-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; }
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+}
+.brand h1 .dot { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.brand h1 .dot i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+.brand h1 .dot i:nth-child(1) { background: var(--cat-word); }
+.brand h1 .dot i:nth-child(2) { background: var(--cat-geo); }
+.brand h1 .dot i:nth-child(3) { background: var(--cat-logic); }
+.brand h1 .dot i:nth-child(4) { background: var(--cat-science); }
+.today { margin: 6px 0 0; color: var(--muted); font-weight: 500; }
+.today strong { color: var(--text); font-weight: 700; }
+.header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 600; font-size: .92rem;
+  text-decoration: none;
+  transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+
+.notice {
+  margin: 12px 0 0; padding: 10px 14px; border-radius: 12px;
+  background: var(--surface-2); border: 1px dashed var(--border); font-size: .9rem;
+}
+
+/* ===========================================================================
+   SUMMARY: progress + streaks
+   =========================================================================== */
+.summary {
+  display: grid; gap: 12px; margin: 18px 0 8px;
+  grid-template-columns: 1fr 1fr;
+}
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+}
+.panel h2 {
+  margin: 0; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); font-weight: 700;
+}
+.progress-figure { display: flex; align-items: baseline; gap: 6px; margin: 4px 0 10px; }
+.progress-figure .big { font-family: var(--font-display); font-weight: 800; font-size: 2rem; line-height: 1; }
+.progress-figure .of { color: var(--muted); font-weight: 600; }
+.bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; border-radius: inherit; transition: width .35s ease; }
+.panel-daily .bar > span { background: var(--text); }
+.panel-daily.complete .bar > span { background: var(--done); }
+.panel-bonus .bar > span {
+  background: linear-gradient(90deg, var(--cat-word), var(--cat-geo), var(--cat-logic), var(--cat-science));
+}
+.progress-note { margin: 8px 0 0; font-size: .85rem; color: var(--muted); min-height: 1.2em; }
+.panel-daily.complete .progress-note { color: var(--done); font-weight: 700; }
+
+.panel-streak { grid-column: 1 / -1; }
+.streak-stats { display: flex; gap: 24px; margin: 6px 0 12px; flex-wrap: wrap; }
+.streak-stats div { display: flex; align-items: baseline; gap: 6px; }
+.streak-stats .big { font-family: var(--font-display); font-weight: 800; font-size: 1.8rem; line-height: 1; }
+.streak-stats .lbl { color: var(--muted); font-size: .9rem; font-weight: 600; }
+.streak-stats .flame { width: 22px; height: 22px; color: var(--flame); align-self: center; }
+
+.days { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; }
+.day { aspect-ratio: 1 / 1.6; border-radius: 4px; background: transparent; border: 1px dashed var(--border); min-width: 0; }
+.day.done { background: var(--done); border-color: var(--done); }
+.day.missed { background: var(--missed); border-color: var(--missed); }
+.day.today { border: 0; background: color-mix(in srgb, var(--text) 22%, transparent); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.day.today.done { background: var(--done); }
+.days-legend { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: .78rem; color: var(--muted); flex-wrap: wrap; }
+.days-legend .keys { display: flex; gap: 12px; }
+.days-legend .keys span::before {
+  content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px;
+}
+.days-legend .k-done::before { background: var(--done); }
+.days-legend .k-missed::before { background: var(--missed); }
+.days-legend .k-none::before { border: 1px dashed var(--muted); }
+
+@media (min-width: 860px) {
+  .summary { grid-template-columns: 1fr 1fr 1.6fr; }
+  .panel-streak { grid-column: auto; }
+}
+
+/* ===========================================================================
+   TOOLBAR
+   =========================================================================== */
+.toolbar {
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  padding: 10px 0; margin-bottom: 6px;
+  border-bottom: 1px solid transparent;
+}
+.toolbar-inner { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  min-height: 40px; padding: 0 14px; border-radius: 99px; white-space: nowrap;
+  border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: .9rem;
+}
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.chip .count { opacity: .7; font-weight: 500; margin-left: 4px; }
+.search {
+  flex: 1 1 200px; min-height: 44px; padding: 0 14px 0 38px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 12px center;
+}
+.view-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.view-toggle button { min-height: 42px; padding: 0 12px; border: 0; background: transparent; font-weight: 600; font-size: .88rem; }
+.view-toggle button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+
+.edit-banner {
+  margin: 4px 0 14px; padding: 12px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--focus) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--focus) 40%, var(--border));
+  font-size: .92rem;
+}
+
+/* ===========================================================================
+   SECTIONS & GRID
+   =========================================================================== */
+.section { margin: 10px 0 22px; }
+.section-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 10px 4px; min-height: 48px;
+  background: none; border: 0; text-align: left;
+  border-bottom: 2px solid var(--accent);
+}
+.section-head h2 {
+  margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: -0.01em;
+}
+.section-head .swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--accent); flex: none; }
+.section-head .meta { margin-left: auto; color: var(--muted); font-weight: 600; font-size: .9rem; }
+.section-head .chev { width: 20px; height: 20px; transition: transform .2s; color: var(--muted); }
+.section-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.section-body[hidden] { display: none; }
+
+.grid {
+  display: grid; gap: 12px; margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+}
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+
+/* ===========================================================================
+   CARD
+   =========================================================================== */
+.card {
+  position: relative;
+  display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: start;
+  padding: 14px 14px 12px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: background .2s, opacity .2s, box-shadow .2s;
+}
+/* Category stripe down the left edge */
+.card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--accent);
+}
+/* Daily games not yet done: stand out */
+.card.mode-daily:not(.is-done) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+/* Done: flatten and dim */
+.card.is-done { background: var(--surface-2); box-shadow: none; }
+.card.is-done .card-title { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--done); }
+.card.is-done .desc, .card.is-done .card-top .pill { opacity: .75; }
+.card.is-done::before { opacity: .45; }
+.card.mode-hidden { opacity: .6; border-style: dashed; }
+
+.tick {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 2.5px solid var(--accent); background: var(--surface);
+  display: grid; place-items: center; padding: 0;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.tick:active { transform: scale(.94); }
+.tick svg { width: 24px; height: 24px; color: var(--accent); opacity: .25; transition: opacity .15s; }
+.tick:hover svg { opacity: .6; }
+.tick[aria-pressed="true"] { background: var(--done); border-color: var(--done); }
+.tick[aria-pressed="true"] svg { color: var(--on-done); opacity: 1; }
+
+.card-body { min-width: 0; }
+.card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-title { margin: 0; font-size: 1.08rem; font-weight: 700; line-height: 1.2; }
+.desc { margin: 3px 0 0; color: var(--muted); font-size: .9rem; }
+.pill {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: 2px 7px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted);
+}
+.pill.daily { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.streak {
+  display: inline-flex; align-items: center; gap: 2px; margin-left: auto;
+  font-weight: 700; font-size: .85rem; color: var(--flame);
+}
+.streak svg { width: 16px; height: 16px; }
+
+.card-actions { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.play {
+  flex: 1 1 auto;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 16px; border-radius: 12px;
+  background: var(--accent); color: var(--on-accent);
+  font-weight: 700; text-decoration: none;
+}
+.play:hover { filter: brightness(1.08); }
+.play svg { width: 16px; height: 16px; }
+.card.is-done .play { background: transparent; color: var(--text); border: 1px solid var(--border); }
+
+/* Mode picker (Customise mode) */
+.mode-picker { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; }
+.mode-picker legend { font-size: .78rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; padding: 0; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span {
+  display: flex; align-items: center; justify-content: center; min-height: 40px;
+  font-size: .88rem; font-weight: 600; border-left: 1px solid var(--border);
+}
+.seg label:first-child span { border-left: 0; }
+.seg input:checked + span { background: var(--text); color: var(--bg); }
+.seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+/* Notes */
+.notes { grid-column: 1 / -1; }
+.notes summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; font-size: .85rem; font-weight: 600; color: var(--muted); border-radius: 8px;
+}
+.notes summary::-webkit-details-marker { display: none; }
+.notes summary svg { width: 14px; height: 14px; transition: transform .2s; }
+.notes[open] summary svg { transform: rotate(90deg); }
+.notes .has-note { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: none; }
+.notes.filled .has-note { display: inline-block; }
+.notes textarea {
+  width: 100%; min-height: 90px; resize: vertical; margin-top: 6px; padding: 10px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: .85rem; line-height: 1.35;
+}
+.notes-row { display: flex; justify-content: flex-end; margin-top: 6px; }
+.notes-row .btn { min-height: 38px; font-size: .85rem; }
+
+.site-footer { padding: 24px 0 40px; color: var(--muted); font-size: .85rem; }
+
+@media (max-width: 560px) {
+  .header-actions .btn .label { display: none; }
+  .header-actions .btn { padding: 0 12px; }
+  .grid { grid-template-columns: 1fr; }
+  .days-legend .keys { order: 3; flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header wrap">
+  <div class="header-row">
+    <div class="brand">
+      <h1>Daily Games Hub<span class="dot" aria-hidden="true"><i></i><i></i><i></i><i></i></span></h1>
+      <p class="today"><strong id="nz-date">…</strong> · NZ time · <span id="reset-in"></span></p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="edit-toggle" aria-pressed="false" type="button" aria-label="Customise">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+        <span class="label">Customise</span>
+      </button>
+      <button class="btn" id="theme-toggle" type="button" aria-label="Theme: Auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+        <span class="label" id="theme-label">Auto</span>
+      </button>
+      <button class="btn" id="export-btn" type="button" aria-label="Export data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        <span class="label">Export</span>
+      </button>
+      <button class="btn" id="import-btn" type="button" aria-label="Import data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></svg>
+        <span class="label">Import</span>
+      </button>
+      <input type="file" id="import-file" accept="application/json,.json" class="visually-hidden" tabindex="-1" aria-hidden="true">
+    </div>
+  </div>
+  <p class="notice" id="storage-notice" hidden>
+    This browser isn't allowing saved data, so ticks only last until you close the tab. Use Export to keep a copy.
+  </p>
+</header>
+
+<main class="wrap">
+  <section class="summary" aria-label="Today's progress and streaks">
+    <div class="panel panel-daily" id="panel-daily">
+      <h2>Daily</h2>
+      <div class="progress-figure"><span class="big" id="daily-done">0</span><span class="of" id="daily-total">/ 0 done</span></div>
+      <div class="bar" role="progressbar" id="daily-bar" aria-label="Daily games done" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span></span></div>
+      <p class="progress-note" id="daily-note" aria-live="polite"></p>
+    </div>
+    <div class="panel panel-bonus">
+      <h2>Bonus</h2>
+      <div class="progress-figure"><span class="big" id="bonus-done">0</span><span class="of" id="bonus-total">/ 0 done</span></div>
+      <div class="bar" role="progressbar" id="bonus-bar" aria-label="Bonus games done" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span></span></div>
+      <p class="progress-note">If there's time.</p>
+    </div>
+    <div class="panel panel-streak">
+      <h2>Streak</h2>
+      <div class="streak-stats">
+        <div>
+          <svg class="flame" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5.5-3 7.5C7.4 11.6 6 13.4 6 16a6 6 0 0 0 12 0c0-2.4-1.1-4.2-2.3-5.6-.3 1.4-1 2.4-2.2 2.9.6-3.6-.2-8.1-1.5-11.3z"/></svg>
+          <span class="big" id="streak-current">0</span><span class="lbl">current</span>
+        </div>
+        <div><span class="big" id="streak-longest">0</span><span class="lbl">longest</span></div>
+      </div>
+      <div class="days" id="days-strip" role="img" aria-label="Last 30 days"></div>
+      <div class="days-legend">
+        <span>30 days ago</span>
+        <span class="keys" aria-hidden="true"><span class="k-done">Complete</span><span class="k-missed">Missed</span><span class="k-none">No data</span></span>
+        <span>Today</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="toolbar" id="toolbar">
+    <div class="toolbar-inner">
+      <div class="chips" role="group" aria-label="Filter games">
+        <button class="chip" type="button" data-filter="all" aria-pressed="true">All<span class="count" data-count="all"></span></button>
+        <button class="chip" type="button" data-filter="daily" aria-pressed="false">Daily<span class="count" data-count="daily"></span></button>
+        <button class="chip" type="button" data-filter="bonus" aria-pressed="false">Bonus<span class="count" data-count="bonus"></span></button>
+        <button class="chip" type="button" data-filter="todo" aria-pressed="false">Not done yet<span class="count" data-count="todo"></span></button>
+      </div>
+      <label class="visually-hidden" for="search">Search games</label>
+      <input class="search" id="search" type="search" placeholder="Search games" autocomplete="off">
+      <div class="view-toggle" role="group" aria-label="Layout">
+        <button type="button" data-view="grouped" aria-pressed="true">By category</button>
+        <button type="button" data-view="all" aria-pressed="false">All in one</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="edit-banner" id="edit-banner" hidden>
+    <strong>Customise mode.</strong> Set each game to <b>Daily</b> (counts towards your streak), <b>Bonus</b> (if you have time) or <b>Hidden</b> (not tracked).
+    Changes apply from today. Past days keep the Daily list they had at the time.
+  </div>
+
+  <div id="games" aria-live="off"></div>
+</main>
+
+<footer class="site-footer wrap">
+  <p>Days reset at midnight New Zealand time. Game links open in a new tab. Data is stored in this browser; use Export to back it up.</p>
+</footer>
+
+<script>
+'use strict';
+
+/* ==========================================================================
+   1. CONFIG: edit games and defaults here
+   ========================================================================== */
+
+/** Timezone that decides what "today" is. Handles NZ daylight saving via Intl. */
+const TIMEZONE = 'Pacific/Auckland';
+
+/** Mode for any game you haven't configured: 'daily' | 'bonus' | 'hidden' */
+const DEFAULT_MODE = 'bonus';
+
+/** Sections, in display order. `id` is what games use in `category`. */
+const CATEGORIES = [
+  { id: 'word',    label: 'Word' },
+  { id: 'geo',     label: 'Geography' },
+  { id: 'logic',   label: 'Maths & Logic' },
+  { id: 'science', label: 'Science & Engineering' },
+];
+
+/**
+ * THE GAME LIST. One object per game:
+ *   name, url, category, desc  (required)
+ *   id, defaultMode            (optional; see the comment at the top of the file)
+ * Lines marked `// TODO verify` are URLs I couldn't confirm. Check them once.
+ */
+const GAMES = [
+  // ---- Word ---------------------------------------------------------------
+  { name: 'Wordle',        category: 'word', desc: 'Guess the five-letter word in six tries.',
+    url: 'https://www.nytimes.com/games/wordle/index.html' },
+  { name: 'Tilerdle',      category: 'word', desc: 'Daily word puzzle built from tiles.',
+    url: 'https://tilerdle.com/' }, // TODO verify: couldn't confirm this game's URL
+  { name: 'Flagle',        category: 'word', desc: 'Reveal the flag piece by piece and name the country.',
+    url: 'https://www.flagle.io/' }, // TODO verify
+  { name: 'Lewdle',        category: 'word', desc: 'Wordle, but every answer is rude.',
+    url: 'https://www.lewdlegame.com/' },
+  { name: 'Waffle',        category: 'word', desc: 'Swap letters to fix six words in a waffle grid.',
+    url: 'https://wafflegame.net/daily' },
+  { name: 'Number Waffle', category: 'word', desc: 'Waffle with numbers. Swap tiles until the sums work.',
+    url: 'https://wafflegame.net/' }, // TODO verify: couldn't confirm a dedicated Number Waffle page
+  { name: 'Connections',   category: 'word', desc: 'Sort 16 words into four hidden groups.',
+    url: 'https://www.nytimes.com/games/connections' },
+  { name: 'Strands',       category: 'word', desc: 'Find themed words and the spangram in a letter grid.',
+    url: 'https://www.nytimes.com/games/strands' },
+  { name: 'Spelling Bee',  category: 'word', desc: 'Make words from seven letters. Aim for Genius.',
+    url: 'https://www.nytimes.com/puzzles/spelling-bee' },
+  { name: 'Quordle',       category: 'word', desc: 'Four Wordles at once, nine guesses.',
+    url: 'https://www.merriam-webster.com/games/quordle/' },
+  { name: 'Octordle',      category: 'word', desc: 'Eight Wordles at once, thirteen guesses.',
+    url: 'https://octordle.com/' },
+  { name: 'Dordle',        category: 'word', desc: 'Two Wordles at once, seven guesses.',
+    url: 'https://zaratustra.itch.io/dordle' },
+  { name: 'Duotrigordle',  category: 'word', desc: 'Thirty-two Wordles at once. Good luck.',
+    url: 'https://duotrigordle.com/' },
+  { name: 'Letter Boxed',  category: 'word', desc: 'Chain words around the sides of a square.',
+    url: 'https://www.nytimes.com/puzzles/letter-boxed' },
+  { name: 'Squaredle',     category: 'word', desc: 'Find every word hidden in a letter grid.',
+    url: 'https://squaredle.app/' },
+  { name: 'Absurdle',      category: 'word', desc: 'Adversarial Wordle that dodges your guesses. Not a daily, but there is a challenge mode.',
+    url: 'https://qntm.org/files/absurdle/absurdle.html' },
+  { name: 'Semantle',      category: 'word', desc: 'Guess the word by meaning, not spelling.',
+    url: 'https://semantle.com/' },
+  { name: 'Contexto',      category: 'word', desc: 'Find the secret word ranked by AI similarity.',
+    url: 'https://contexto.me/' },
+
+  // ---- Geography ----------------------------------------------------------
+  { name: 'Worldle',       category: 'geo', desc: 'Name the country from its silhouette.',
+    url: 'https://worldle.teuteuf.fr/' },
+  { name: 'Globle',        category: 'geo', desc: 'Find the mystery country on a hot/cold globe.',
+    url: 'https://globle-game.com/' },
+  { name: 'Wheretaken',    category: 'geo', desc: 'Where in the world was this photo taken?',
+    url: 'https://wheretaken.teuteuf.fr/' },
+  { name: 'Statele',       category: 'geo', desc: 'Name the US state from its shape.',
+    url: 'https://statele.teuteuf.fr/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Tradle',        category: 'geo', desc: 'Guess the country from its export treemap.',
+    url: 'https://games.oec.world/en/tradle/' },
+  { name: 'Countryle',     category: 'geo', desc: 'Deduce the country from population, climate and more.',
+    url: 'https://countryle.com/' },
+  { name: 'GeoGuessr Daily', id: 'geoguessr', category: 'geo', desc: 'Daily challenge: five Street View rounds. Free account needed.',
+    url: 'https://www.geoguessr.com/daily-challenges' }, // TODO verify: GeoGuessr has moved this page before
+  { name: 'Bordle',        category: 'geo', desc: 'Name the country from its neighbours and borders.',
+    url: 'https://bordle.xyz/' }, // TODO verify: couldn't confirm this URL
+
+  // ---- Maths & Logic ------------------------------------------------------
+  { name: 'Nerdle',        category: 'logic', desc: 'Wordle for equations.',
+    url: 'https://www.nerdlegame.com/' },
+  { name: 'Mathler',       category: 'logic', desc: 'Find the hidden equation that equals the target.',
+    url: 'https://www.mathler.com/' },
+  { name: 'Sudoku',        category: 'logic', desc: 'NYT daily Sudoku in easy, medium and hard.',
+    url: 'https://www.nytimes.com/puzzles/sudoku' },
+  { name: 'Killer Sudoku', category: 'logic', desc: 'Sudoku with cage sums.',
+    url: 'https://www.dailykillersudoku.com/' }, // TODO verify
+  { name: 'Minesweeper',   category: 'logic', desc: 'Classic Minesweeper. Use the daily or quest modes.',
+    url: 'https://minesweeper.online/' }, // TODO verify: no well-known daily-only Minesweeper; check for a daily link
+  { name: 'Queens',        category: 'logic', desc: 'One queen per row, column and colour region.',
+    url: 'https://www.linkedin.com/games/queens/' },
+  { name: 'Tango',         category: 'logic', desc: 'Balance suns and moons in a grid.',
+    url: 'https://www.linkedin.com/games/tango/' },
+  { name: 'Zip',           category: 'logic', desc: 'Draw one path through every numbered cell.',
+    url: 'https://www.linkedin.com/games/zip/' },
+  { name: 'Pinpoint',      category: 'logic', desc: 'Guess the category from as few clues as possible.',
+    url: 'https://www.linkedin.com/games/pinpoint/' },
+  { name: 'Binairo',       category: 'logic', desc: 'Takuzu: fill 0s and 1s with no three in a row.',
+    url: 'https://www.puzzle-binairo.com/' }, // TODO verify: link to the daily puzzle if the site has one
+
+  // ---- Science & Engineering ----------------------------------------------
+  { name: 'Elementle',     category: 'science', desc: 'Guess the date of a historical event.',
+    url: 'https://www.elementle.com/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Chemdle',       category: 'science', desc: 'Guess the element on the periodic table.',
+    url: 'https://chemdle.com/' }, // TODO verify: couldn't confirm this URL
+  { name: 'NandGame',      category: 'science', desc: 'Build a computer from NAND gates, one logic puzzle at a time. Not a daily.',
+    url: 'https://nandgame.com/' }, // Swapped in: no well-known daily logic-gate puzzle exists
+  { name: 'Pixeldle',      category: 'science', desc: 'Guess the image as the pixels sharpen.',
+    url: 'https://pixeldle.com/' }, // TODO verify: couldn't confirm this URL
+];
+
+/* ==========================================================================
+   2. STORAGE: the only code that touches persistence.
+      Swap load()/save() for a backend later; nothing else needs to change.
+   ========================================================================== */
+const Storage = (() => {
+  const KEY = 'dailyGamesHub:v1';
+  let memory = null;       // in-memory fallback (and mirror of the last save)
+  let available = false;
+
+  try {
+    const probe = '__dgh_probe__';
+    localStorage.setItem(probe, probe);
+    localStorage.removeItem(probe);
+    available = true;
+  } catch (e) {
+    available = false;
+  }
+
+  return {
+    isPersistent: () => available,
+
+    /** Returns the saved data object, or null if nothing is saved. */
+    load() {
+      if (available) {
+        try {
+          const raw = localStorage.getItem(KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          console.warn('Daily Games Hub: could not read saved data', e);
+        }
+      }
+      return memory ? JSON.parse(JSON.stringify(memory)) : null;
+    },
+
+    /** Persists the whole data object. */
+    save(data) {
+      memory = JSON.parse(JSON.stringify(data));
+      if (!available) return;
+      try {
+        localStorage.setItem(KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Daily Games Hub: could not save, keeping data in memory', e);
+        available = false;
+        showStorageNotice();
+      }
+    },
+
+    /** Key used, so other tabs can be listened to via the `storage` event. */
+    key: KEY,
+  };
+})();
+
+/* ==========================================================================
+   3. DATES: everything keyed by YYYY-MM-DD in TIMEZONE
+   ========================================================================== */
+const keyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+});
+const clockFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: TIMEZONE, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
+const longDateFormatter = new Intl.DateTimeFormat('en-NZ', {
+  timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+});
+
+function partsOf(formatter, date) {
+  const out = {};
+  for (const p of formatter.formatToParts(date)) out[p.type] = p.value;
+  return out;
+}
+
+/** Today's date key in NZ, regardless of the device's timezone. */
+function todayKey(now = new Date()) {
+  const p = partsOf(keyFormatter, now);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/** Calendar arithmetic on date keys (done in UTC so the device TZ can't interfere). */
+function addDays(key, n) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+function formatKey(key, opts) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-NZ', { timeZone: 'UTC', ...opts });
+}
+
+/** Approximate time until NZ midnight (off by an hour only on DST-change days). */
+function timeUntilReset(now = new Date()) {
+  const p = partsOf(clockFormatter, now);
+  const elapsed = (+p.hour % 24) * 3600 + (+p.minute) * 60 + (+p.second);
+  const left = Math.max(0, 86400 - elapsed);
+  return { h: Math.floor(left / 3600), m: Math.floor((left % 3600) / 60) };
+}
+
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/* ==========================================================================
+   4. DATA MODEL
+      data = {
+        version: 1,
+        modes:   { [gameId]: 'daily' | 'bonus' | 'hidden' },
+        prefs:   { theme, view, filter, collapsed: { [categoryId]: true } },
+        history: { 'YYYY-MM-DD': { done: [gameId], daily: [gameId], notes: { [gameId]: text } } }
+      }
+      history[day].daily is a snapshot of the Daily games on that day, so changing
+      modes later never rewrites past days. Today's snapshot follows live settings.
+   ========================================================================== */
+const MODES = ['daily', 'bonus', 'hidden'];
+
+function slugify(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Give every game a stable id and validate its category.
+const CATEGORY_IDS = new Set(CATEGORIES.map(c => c.id));
+for (const g of GAMES) {
+  g.id = g.id || slugify(g.name);
+  if (!CATEGORY_IDS.has(g.category)) console.warn(`Unknown category "${g.category}" for ${g.name}`);
+}
+const GAME_BY_ID = new Map(GAMES.map(g => [g.id, g]));
+
+function defaultData() {
+  return {
+    version: 1,
+    modes: {},
+    prefs: { theme: 'system', view: 'grouped', filter: 'all', collapsed: {} },
+    history: {},
+  };
+}
+
+/** Coerce anything (saved or imported) into a valid data object. */
+function normalise(input) {
+  const d = defaultData();
+  if (!input || typeof input !== 'object') return d;
+
+  if (input.modes && typeof input.modes === 'object') {
+    for (const [id, m] of Object.entries(input.modes)) if (MODES.includes(m)) d.modes[id] = m;
+  }
+  const p = input.prefs || {};
+  if (['system', 'light', 'dark'].includes(p.theme)) d.prefs.theme = p.theme;
+  if (['grouped', 'all'].includes(p.view)) d.prefs.view = p.view;
+  if (['all', 'daily', 'bonus', 'todo'].includes(p.filter)) d.prefs.filter = p.filter;
+  if (p.collapsed && typeof p.collapsed === 'object') {
+    for (const [k, v] of Object.entries(p.collapsed)) if (v) d.prefs.collapsed[k] = true;
+  }
+
+  if (input.history && typeof input.history === 'object') {
+    for (const [key, e] of Object.entries(input.history)) {
+      if (!DATE_KEY_RE.test(key) || !e || typeof e !== 'object') continue;
+      const strings = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string'))] : [];
+      const entry = { done: strings(e.done), daily: strings(e.daily) };
+      if (e.notes && typeof e.notes === 'object') {
+        const notes = {};
+        for (const [id, t] of Object.entries(e.notes)) if (typeof t === 'string' && t) notes[id] = t;
+        if (Object.keys(notes).length) entry.notes = notes;
+      }
+      d.history[key] = entry;
+    }
+  }
+  return d;
+}
+
+let data = normalise(Storage.load());
+let currentDay = todayKey();
+
+// UI-only state (not persisted)
+const ui = { editMode: false, search: '', openNotes: new Set() };
+
+let saveTimer = null;
+function save() { clearTimeout(saveTimer); Storage.save(data); }
+/** Debounced save for frequent edits (typing notes). */
+function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+
+function modeOf(id) {
+  return data.modes[id] || (GAME_BY_ID.get(id) || {}).defaultMode || DEFAULT_MODE;
+}
+function currentDailyIds() {
+  return GAMES.filter(g => modeOf(g.id) === 'daily').map(g => g.id);
+}
+
+/** Make sure today's entry exists and its Daily snapshot matches current settings. */
+function ensureToday() {
+  const key = currentDay;
+  const entry = data.history[key] || (data.history[key] = { done: [], daily: [] });
+  entry.daily = currentDailyIds();
+  save();
+  return entry;
+}
+function today() { return data.history[currentDay] || ensureToday(); }
+function isDone(id) { return today().done.includes(id); }
+
+function setDone(id, done) {
+  const e = today();
+  const has = e.done.includes(id);
+  if (done && !has) e.done.push(id);
+  if (!done && has) e.done = e.done.filter(x => x !== id);
+  save();
+}
+
+function setMode(id, mode) {
+  if (!MODES.includes(mode)) return;
+  data.modes[id] = mode;
+  today().daily = currentDailyIds(); // only today's snapshot changes
+  save();
+}
+
+function getNote(id) { return (today().notes || {})[id] || ''; }
+function setNote(id, text) {
+  const e = today();
+  e.notes = e.notes || {};
+  if (text) e.notes[id] = text; else delete e.notes[id];
+  if (!Object.keys(e.notes).length) delete e.notes;
+  saveSoon();
+}
+
+/* ==========================================================================
+   5. STATS & STREAKS
+   ========================================================================== */
+
+/** A day is complete when it had at least one Daily game and all were done. */
+function isDayComplete(entry) {
+  return !!entry && entry.daily.length > 0 && entry.daily.every(id => entry.done.includes(id));
+}
+
+/** Counts back from today; if today isn't finished yet, start from yesterday. */
+function countBack(test) {
+  let k = test(currentDay) ? currentDay : addDays(currentDay, -1);
+  let n = 0;
+  while (test(k)) { n++; k = addDays(k, -1); }
+  return n;
+}
+
+function overallStreaks() {
+  const test = k => isDayComplete(data.history[k]);
+  const current = countBack(test);
+  const keys = Object.keys(data.history).filter(k => k <= currentDay).sort();
+  let longest = 0, run = 0;
+  if (keys.length) {
+    for (let k = keys[0]; k <= currentDay; k = addDays(k, 1)) {
+      run = test(k) ? run + 1 : 0;
+      if (run > longest) longest = run;
+    }
+  }
+  return { current, longest: Math.max(longest, current) };
+}
+
+function gameStreak(id) {
+  return countBack(k => !!data.history[k] && data.history[k].done.includes(id));
+}
+
+function firstTrackedDay() {
+  const keys = Object.keys(data.history).sort();
+  return keys[0] || currentDay;
+}
+
+/* ==========================================================================
+   6. RENDERING
+   ========================================================================== */
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  flame: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5.5-3 7.5C7.4 11.6 6 13.4 6 16a6 6 0 0 0 12 0c0-2.4-1.1-4.2-2.3-5.6-.3 1.4-1 2.4-2.2 2.9.6-3.6-.2-8.1-1.5-11.3z"/></svg>',
+  chevron: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+  caret: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
+};
+
+const MODE_ORDER = { daily: 0, bonus: 1, hidden: 2 };
+
+/** Games that pass the current filter + search, Daily first, then list order. */
+function visibleGames() {
+  const q = ui.search.trim().toLowerCase();
+  const f = data.prefs.filter;
+  return GAMES
+    .filter(g => {
+      const m = modeOf(g.id);
+      if (m === 'hidden' && !ui.editMode) return false;
+      if (f === 'daily' && m !== 'daily') return false;
+      if (f === 'bonus' && m !== 'bonus') return false;
+      if (f === 'todo' && (m === 'hidden' || isDone(g.id))) return false;
+      if (q) {
+        const cat = (CATEGORIES.find(c => c.id === g.category) || {}).label || '';
+        if (!`${g.name} ${g.desc} ${cat}`.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => (MODE_ORDER[modeOf(a.g.id)] - MODE_ORDER[modeOf(b.g.id)]) || a.i - b.i)
+    .map(x => x.g);
+}
+
+function cardHTML(g) {
+  const mode = modeOf(g.id);
+  const done = isDone(g.id);
+  const streak = gameStreak(g.id);
+  const note = getNote(g.id);
+  const open = ui.openNotes.has(g.id);
+  const name = esc(g.name);
+
+  const pill = mode === 'daily' ? '<span class="pill daily">Daily</span>'
+             : mode === 'hidden' ? '<span class="pill">Hidden</span>'
+             : '<span class="pill">Bonus</span>';
+
+  const streakHTML = streak > 0
+    ? `<span class="streak" title="${streak}-day streak">${ICONS.flame}<span>${streak}</span><span class="visually-hidden"> day streak</span></span>`
+    : '';
+
+  const picker = ui.editMode ? `
+    <fieldset class="mode-picker">
+      <legend>Tracking</legend>
+      <div class="seg">
+        ${MODES.map(m => `
+          <label><input type="radio" name="mode-${esc(g.id)}" value="${m}" data-action="mode" data-id="${esc(g.id)}"
+            data-focus-key="mode:${esc(g.id)}:${m}" ${m === mode ? 'checked' : ''}><span>${m[0].toUpperCase() + m.slice(1)}</span></label>`).join('')}
+      </div>
+    </fieldset>` : '';
+
+  return `
+  <article class="card cat-${esc(g.category)} mode-${mode} ${done ? 'is-done' : ''}" data-id="${esc(g.id)}">
+    <button class="tick" type="button" data-action="toggle" data-id="${esc(g.id)}" data-focus-key="tick:${esc(g.id)}"
+      aria-pressed="${done}" aria-label="${name} done today">${ICONS.check}</button>
+    <div class="card-body">
+      <div class="card-top"><h3 class="card-title">${name}</h3>${pill}${streakHTML}</div>
+      <p class="desc">${esc(g.desc || '')}</p>
+    </div>
+    <div class="card-actions">
+      <a class="play" href="${esc(g.url)}" target="_blank" rel="noopener noreferrer"
+         data-focus-key="play:${esc(g.id)}">${done ? 'Open again' : 'Play'} ${ICONS.external}<span class="visually-hidden"> ${name} (opens in a new tab)</span></a>
+    </div>
+    ${picker}
+    <details class="notes ${note ? 'filled' : ''}" data-id="${esc(g.id)}" ${open ? 'open' : ''}>
+      <summary data-focus-key="notes:${esc(g.id)}">${ICONS.caret}Notes / score<span class="has-note" aria-hidden="true"></span></summary>
+      <label class="visually-hidden" for="note-${esc(g.id)}">Today's notes or score for ${name}</label>
+      <textarea id="note-${esc(g.id)}" data-action="note" data-id="${esc(g.id)}" data-focus-key="note:${esc(g.id)}"
+        placeholder="Paste your share text or score…" spellcheck="false">${esc(note)}</textarea>
+      <div class="notes-row">
+        <button class="btn" type="button" data-action="copy" data-id="${esc(g.id)}" data-focus-key="copy:${esc(g.id)}">Copy</button>
+      </div>
+    </details>
+  </article>`;
+}
+
+function renderGames() {
+  const games = visibleGames();
+  const root = $('#games');
+
+  if (!games.length) {
+    const msg = data.prefs.filter === 'todo' && !ui.search
+      ? 'Nothing left to do. Nice work.'
+      : 'No games match. Try another filter or search.';
+    root.innerHTML = `<p class="empty">${msg}</p>`;
+    return;
+  }
+
+  if (data.prefs.view === 'all') {
+    root.innerHTML = `<div class="grid">${games.map(cardHTML).join('')}</div>`;
+    return;
+  }
+
+  root.innerHTML = CATEGORIES.map(cat => {
+    const list = games.filter(g => g.category === cat.id);
+    if (!list.length) return '';
+    const tracked = GAMES.filter(g => g.category === cat.id && modeOf(g.id) !== 'hidden');
+    const doneCount = tracked.filter(g => isDone(g.id)).length;
+    const collapsed = !!data.prefs.collapsed[cat.id];
+    return `
+    <section class="section cat-${cat.id}" aria-labelledby="h-${cat.id}">
+      <button class="section-head" type="button" data-action="collapse" data-cat="${cat.id}"
+        aria-expanded="${!collapsed}" aria-controls="body-${cat.id}" data-focus-key="collapse:${cat.id}">
+        <span class="swatch" aria-hidden="true"></span>
+        <h2 id="h-${cat.id}">${esc(cat.label)}</h2>
+        <span class="meta">${doneCount}/${tracked.length} done</span>
+        ${ICONS.chevron}
+      </button>
+      <div class="section-body" id="body-${cat.id}" ${collapsed ? 'hidden' : ''}>
+        <div class="grid">${list.map(cardHTML).join('')}</div>
+      </div>
+    </section>`;
+  }).join('');
+}
+
+function setBar(id, done, total) {
+  const bar = $(id);
+  bar.setAttribute('aria-valuemax', total);
+  bar.setAttribute('aria-valuenow', done);
+  bar.firstElementChild.style.width = total ? `${(done / total) * 100}%` : '0';
+}
+
+function renderProgress() {
+  const e = today();
+  const daily = GAMES.filter(g => modeOf(g.id) === 'daily');
+  const bonus = GAMES.filter(g => modeOf(g.id) === 'bonus');
+  const dDone = daily.filter(g => e.done.includes(g.id)).length;
+  const bDone = bonus.filter(g => e.done.includes(g.id)).length;
+
+  $('#daily-done').textContent = dDone;
+  $('#daily-total').textContent = `/ ${daily.length} done`;
+  $('#bonus-done').textContent = bDone;
+  $('#bonus-total').textContent = `/ ${bonus.length} done`;
+  setBar('#daily-bar', dDone, daily.length);
+  setBar('#bonus-bar', bDone, bonus.length);
+
+  const complete = daily.length > 0 && dDone === daily.length;
+  $('#panel-daily').classList.toggle('complete', complete);
+  $('#daily-note').textContent = !daily.length
+    ? 'No Daily games yet. Pick some in Customise.'
+    : complete ? 'Day complete. Streak kept.'
+    : `${daily.length - dDone} to go to keep your streak.`;
+
+  // Chip counts (tracked games only)
+  const tracked = GAMES.filter(g => modeOf(g.id) !== 'hidden');
+  const counts = {
+    all: tracked.length,
+    daily: daily.length,
+    bonus: bonus.length,
+    todo: tracked.filter(g => !e.done.includes(g.id)).length,
+  };
+  document.querySelectorAll('[data-count]').forEach(el => { el.textContent = counts[el.dataset.count]; });
+}
+
+function renderStreaks() {
+  const { current, longest } = overallStreaks();
+  $('#streak-current').textContent = current;
+  $('#streak-longest').textContent = longest;
+
+  const first = firstTrackedDay();
+  let completed = 0;
+  const cells = [];
+  for (let i = 29; i >= 0; i--) {
+    const k = addDays(currentDay, -i);
+    const e = data.history[k];
+    let cls, label;
+    if (isDayComplete(e)) { cls = 'done'; label = 'complete'; completed++; }
+    else if (k === currentDay) { cls = ''; label = 'in progress'; }
+    else if (k >= first && (!e || e.daily.length)) { cls = 'missed'; label = 'missed'; }
+    else { cls = ''; label = 'no data'; }
+    if (k === currentDay) cls += ' today';
+    const extra = e && e.daily.length ? ` (${e.daily.filter(id => e.done.includes(id)).length}/${e.daily.length})` : '';
+    cells.push(`<span class="day ${cls}" title="${formatKey(k, { weekday: 'short', day: 'numeric', month: 'short' })}: ${label}${extra}"></span>`);
+  }
+  const strip = $('#days-strip');
+  strip.innerHTML = cells.join('');
+  strip.setAttribute('aria-label', `Last 30 days: ${completed} complete`);
+}
+
+function renderHeader() {
+  $('#nz-date').textContent = longDateFormatter.format(new Date());
+  const { h, m } = timeUntilReset();
+  $('#reset-in').textContent = `resets in ${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+function renderControls() {
+  document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === data.prefs.filter));
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === data.prefs.view));
+  $('#edit-toggle').setAttribute('aria-pressed', ui.editMode);
+  $('#edit-banner').hidden = !ui.editMode;
+}
+
+/** Re-render everything, keeping keyboard focus where it was. */
+function render() {
+  const focusKey = document.activeElement && document.activeElement.dataset
+    ? document.activeElement.dataset.focusKey : null;
+  renderHeader();
+  renderControls();
+  renderProgress();
+  renderStreaks();
+  renderGames();
+  if (focusKey) {
+    const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
+    if (el) el.focus({ preventScroll: true });
+  }
+}
+
+/* ==========================================================================
+   7. THEME
+   ========================================================================== */
+const darkQuery = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+const THEME_LABELS = { system: 'Auto', light: 'Light', dark: 'Dark' };
+
+function applyTheme() {
+  const pref = data.prefs.theme;
+  const effective = pref === 'system' ? (darkQuery && darkQuery.matches ? 'dark' : 'light') : pref;
+  document.documentElement.dataset.theme = effective;
+  document.querySelector('meta[name="theme-color"]')
+    .setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+  $('#theme-label').textContent = THEME_LABELS[pref];
+  $('#theme-toggle').setAttribute('aria-label', `Theme: ${THEME_LABELS[pref]}. Click to change.`);
+}
+if (darkQuery) {
+  const onChange = () => { if (data.prefs.theme === 'system') applyTheme(); };
+  darkQuery.addEventListener ? darkQuery.addEventListener('change', onChange) : darkQuery.addListener(onChange);
+}
+
+/* ==========================================================================
+   8. EVENTS
+   ========================================================================== */
+const gamesRoot = $('#games');
+
+gamesRoot.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const { action, id } = el.dataset;
+
+  if (action === 'toggle') {
+    if (checkDateChange()) return; // the page just rolled over to a new day
+    setDone(id, !isDone(id));
+    render();
+  } else if (action === 'collapse') {
+    const cat = el.dataset.cat;
+    if (data.prefs.collapsed[cat]) delete data.prefs.collapsed[cat];
+    else data.prefs.collapsed[cat] = true;
+    save();
+    render();
+  } else if (action === 'copy') {
+    copyText(getNote(id), el);
+  }
+});
+
+gamesRoot.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.action === 'mode') {
+    checkDateChange();
+    setMode(el.dataset.id, el.value);
+    render();
+  }
+});
+
+gamesRoot.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.action !== 'note') return;
+  // Save without re-rendering so typing isn't interrupted.
+  setNote(el.dataset.id, el.value);
+  const details = el.closest('details');
+  if (details) details.classList.toggle('filled', !!el.value);
+});
+
+// <details> `toggle` doesn't bubble, so listen in the capture phase.
+gamesRoot.addEventListener('toggle', e => {
+  const d = e.target;
+  if (!(d instanceof HTMLDetailsElement) || !d.dataset.id) return;
+  if (d.open) ui.openNotes.add(d.dataset.id); else ui.openNotes.delete(d.dataset.id);
+}, true);
+
+async function copyText(text, button) {
+  const original = button.textContent;
+  let ok = false;
+  if (text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (err) {
+      // Fallback for older browsers / non-secure contexts
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+      ta.remove();
+      button.focus();
+    }
+  }
+  button.textContent = !text ? 'Nothing to copy' : ok ? 'Copied!' : 'Copy failed';
+  setTimeout(() => { button.textContent = original; }, 1500);
+}
+
+document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
+  data.prefs.filter = b.dataset.filter;
+  save();
+  render();
+}));
+
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  data.prefs.view = b.dataset.view;
+  save();
+  render();
+}));
+
+$('#search').addEventListener('input', e => {
+  ui.search = e.target.value;
+  renderGames();
+});
+
+$('#edit-toggle').addEventListener('click', () => {
+  ui.editMode = !ui.editMode;
+  render();
+});
+
+$('#theme-toggle').addEventListener('click', () => {
+  const order = ['system', 'light', 'dark'];
+  data.prefs.theme = order[(order.indexOf(data.prefs.theme) + 1) % order.length];
+  save();
+  applyTheme();
+});
+
+// ---- Export / Import ------------------------------------------------------
+$('#export-btn').addEventListener('click', () => {
+  save();
+  const payload = { app: 'daily-games-hub', exportedAt: new Date().toISOString(), ...data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `daily-games-hub-${currentDay}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+$('#import-btn').addEventListener('click', () => $('#import-file').click());
+
+$('#import-file').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ''; // allow re-importing the same file
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.history !== 'object') {
+      throw new Error('This file doesn\'t look like a Daily Games Hub export.');
+    }
+    const incoming = normalise(parsed);
+    const days = Object.keys(incoming.history).length;
+    if (!confirm(`Import ${days} day(s) of history and your game settings?\nThis replaces the data currently in this browser.`)) return;
+    data = incoming;
+    ensureToday();
+    applyTheme();
+    render();
+  } catch (err) {
+    alert(`Import failed: ${err.message}`);
+  }
+});
+
+// Keep multiple open tabs in sync
+window.addEventListener('storage', e => {
+  if (e.key !== Storage.key) return;
+  data = normalise(Storage.load());
+  applyTheme();
+  render();
+});
+
+function showStorageNotice() {
+  const n = document.getElementById('storage-notice');
+  if (n) n.hidden = false;
+}
+
+/* ==========================================================================
+   9. MIDNIGHT ROLLOVER & INIT
+   ========================================================================== */
+
+/** Detects a new NZ day. Returns true if the day changed (and re-rendered). */
+function checkDateChange() {
+  const k = todayKey();
+  if (k === currentDay) { renderHeader(); return false; }
+  save();                 // flush any pending note for the old day
+  currentDay = k;
+  ui.openNotes.clear();
+  ensureToday();
+  render();
+  return true;
+}
+
+setInterval(checkDateChange, 30 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDateChange(); });
+window.addEventListener('focus', checkDateChange);
+window.addEventListener('pagehide', save);
+
+if (!Storage.isPersistent()) showStorageNotice();
+ensureToday();
+applyTheme();
+render();
+</script>
+</body>
+</html>
