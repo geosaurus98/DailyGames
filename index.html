@@ -11,7 +11,8 @@
 
       { name: 'Wordle', url: 'https://...', category: 'word', desc: 'Guess the 5-letter word' },
 
-    - category must be one of the ids in `CATEGORIES`: 'word', 'geo', 'logic', 'science'.
+    - category must be one of the ids in `CATEGORIES`: 'word', 'geo', 'logic', 'science',
+      'trivia', 'sports'.
     - Optional `id`: a stable key used for history. If omitted, it's derived from
       the name ("Killer Sudoku" -> "killer-sudoku"). If you RENAME a game and want
       to keep its history/streak, add `id: 'old-id'` to it.
@@ -75,6 +76,8 @@
   --cat-geo: #0b6e66;      /* deep teal */
   --cat-logic: #5a3cc2;    /* violet */
   --cat-science: #b8304a;  /* coral red */
+  --cat-trivia: #2a5bb8;   /* cobalt */
+  --cat-sports: #9a2f82;   /* magenta */
   --on-accent: #ffffff;
 
   --radius: 16px;
@@ -100,6 +103,8 @@
   --cat-geo: #35d0bb;
   --cat-logic: #a897ff;
   --cat-science: #ff7d92;
+  --cat-trivia: #84aeff;
+  --cat-sports: #ee86d6;
   --on-accent: #15130f;
 }
 
@@ -108,6 +113,8 @@
 .cat-geo     { --accent: var(--cat-geo); }
 .cat-logic   { --accent: var(--cat-logic); }
 .cat-science { --accent: var(--cat-science); }
+.cat-trivia  { --accent: var(--cat-trivia); }
+.cat-sports  { --accent: var(--cat-sports); }
 
 /* ===========================================================================
    BASE
@@ -152,6 +159,8 @@ a { color: inherit; }
 .brand h1 .dot i:nth-child(2) { background: var(--cat-geo); }
 .brand h1 .dot i:nth-child(3) { background: var(--cat-logic); }
 .brand h1 .dot i:nth-child(4) { background: var(--cat-science); }
+.brand h1 .dot i:nth-child(5) { background: var(--cat-trivia); }
+.brand h1 .dot i:nth-child(6) { background: var(--cat-sports); }
 .today { margin: 6px 0 0; color: var(--muted); font-weight: 500; }
 .today strong { color: var(--text); font-weight: 700; }
 .header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -198,7 +207,7 @@ a { color: inherit; }
 .panel-daily .bar > span { background: var(--text); }
 .panel-daily.complete .bar > span { background: var(--done); }
 .panel-bonus .bar > span {
-  background: linear-gradient(90deg, var(--cat-word), var(--cat-geo), var(--cat-logic), var(--cat-science));
+  background: linear-gradient(90deg, var(--cat-word), var(--cat-geo), var(--cat-logic), var(--cat-science), var(--cat-trivia), var(--cat-sports));
 }
 .progress-note { margin: 8px 0 0; font-size: .85rem; color: var(--muted); min-height: 1.2em; }
 .panel-daily.complete .progress-note { color: var(--done); font-weight: 700; }
@@ -280,7 +289,7 @@ a { color: inherit; }
   margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: -0.01em;
 }
 .section-head .swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--accent); flex: none; }
-.section-head .meta { margin-left: auto; color: var(--muted); font-weight: 600; font-size: .9rem; }
+.section-head .meta { margin-left: auto; white-space: nowrap; color: var(--muted); font-weight: 600; font-size: .9rem; }
 .section-head .chev { width: 20px; height: 20px; transition: transform .2s; color: var(--muted); }
 .section-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
 .section-body[hidden] { display: none; }
@@ -412,7 +421,7 @@ a { color: inherit; }
 <header class="site-header wrap">
   <div class="header-row">
     <div class="brand">
-      <h1>Daily Games Hub<span class="dot" aria-hidden="true"><i></i><i></i><i></i><i></i></span></h1>
+      <h1>Daily Games Hub<span class="dot" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></h1>
       <p class="today"><strong id="nz-date">…</strong> · NZ time · <span id="reset-in"></span></p>
     </div>
     <div class="header-actions">
@@ -520,6 +529,8 @@ const CATEGORIES = [
   { id: 'geo',     label: 'Geography' },
   { id: 'logic',   label: 'Maths & Logic' },
   { id: 'science', label: 'Science & Engineering' },
+  { id: 'trivia',  label: 'Trivia & General Knowledge' },
+  { id: 'sports',  label: 'Sports & Pop Culture' },
 ];
 
 /**
@@ -566,6 +577,8 @@ const GAMES = [
     url: 'https://semantle.com/' },
   { name: 'Contexto',      category: 'word', desc: 'Find the secret word ranked by AI similarity.',
     url: 'https://contexto.me/' },
+  { name: 'Swervle',       category: 'word', desc: 'Daily word puzzle.',
+    url: 'https://swervle.com/' }, // TODO verify: couldn't confirm this game's URL, category or description
 
   // ---- Geography ----------------------------------------------------------
   { name: 'Worldle',       category: 'geo', desc: 'Name the country from its silhouette.',
@@ -614,8 +627,40 @@ const GAMES = [
     url: 'https://chemdle.com/' }, // TODO verify: couldn't confirm this URL
   { name: 'NandGame',      category: 'science', desc: 'Build a computer from NAND gates, one logic puzzle at a time. Not a daily.',
     url: 'https://nandgame.com/' }, // Swapped in: no well-known daily logic-gate puzzle exists
-  { name: 'Pixeldle',      category: 'science', desc: 'Guess the image as the pixels sharpen.',
-    url: 'https://pixeldle.com/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Pixeldle',      category: 'science', desc: 'Daily pixel-based guessing game.',
+    url: 'https://pixeldle.com/' },
+  { name: 'Pixadle',       category: 'science', desc: 'Daily pixel-based guessing game.',
+    url: 'https://www.pixadle.com/' },
+
+  // ---- Trivia & General Knowledge -----------------------------------------
+  { name: 'Bandle',        category: 'trivia', desc: 'Guess the song as instruments are added one by one.',
+    url: 'https://bandle.app/' },
+  { name: 'Heardle',       category: 'trivia', desc: 'Guess the song from the opening seconds.',
+    url: 'https://www.heardle.app/' }, // TODO verify: the original Heardle closed in 2023; pick the clone you like
+  { name: 'Framed',        category: 'trivia', desc: 'Guess the film from six stills.',
+    url: 'https://framed.wtf/' },
+  { name: 'Moviedle',      category: 'trivia', desc: 'Guess the movie from a one-second clip that gets longer.',
+    url: 'https://moviedle.app/' }, // TODO verify
+  { name: 'Costcodle',     category: 'trivia', desc: 'Guess the price of a Costco product.',
+    url: 'https://costcodle.com/' }, // TODO verify
+  { name: 'TimeGuessr',    category: 'trivia', desc: 'Guess the year and location of a photo.',
+    url: 'https://timeguessr.com/' },
+  { name: 'Wikitrivia',    category: 'trivia', desc: 'Place Wikipedia events in date order. Not a daily.',
+    url: 'https://wikitrivia.tomjwatson.com/' },
+  { name: 'Wiki Game Daily', id: 'wiki-game', category: 'trivia', desc: 'Get between two Wikipedia pages by links alone.',
+    url: 'https://www.thewikigamedaily.com/' }, // TODO verify
+
+  // ---- Sports & Pop Culture -----------------------------------------------
+  { name: 'Poeltl',        category: 'sports', desc: 'Guess the NBA player from team, position and stats.',
+    url: 'https://poeltl.nbpa.com/' }, // TODO verify: Poeltl moved to the NBPA site
+  { name: 'Immaculate Grid', category: 'sports', desc: 'Fill a 3x3 grid with players who fit both criteria.',
+    url: 'https://www.immaculategrid.com/' },
+  { name: 'Football Grid', category: 'sports', desc: 'Immaculate Grid-style daily grid for football players.',
+    url: 'https://www.footballgrid.com/' }, // TODO verify: couldn't confirm a football grid URL
+  { name: 'Actorle',       category: 'sports', desc: 'Guess the actor from their filmography.',
+    url: 'https://actorle.com/' },
+  { name: 'Cinematrix',    category: 'sports', desc: 'Grid puzzle linking actors and movies.',
+    url: 'https://cinematrix.app/' }, // TODO verify: couldn't confirm this URL
 ];
 
 /* ==========================================================================
