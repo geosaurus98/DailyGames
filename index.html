@@ -545,14 +545,10 @@ const GAMES = [
     url: 'https://www.nytimes.com/games/wordle/index.html' },
   { name: 'Tilerdle',      category: 'word', desc: 'Daily word puzzle built from tiles.',
     url: 'https://tilerdle.com/' }, // TODO verify: couldn't confirm this game's URL
-  { name: 'Flagle',        category: 'word', desc: 'Reveal the flag piece by piece and name the country.',
-    url: 'https://www.flagle.io/' }, // TODO verify
   { name: 'Lewdle',        category: 'word', desc: 'Wordle, but every answer is rude.',
     url: 'https://www.lewdlegame.com/' },
   { name: 'Waffle',        category: 'word', desc: 'Swap letters to fix six words in a waffle grid.',
     url: 'https://wafflegame.net/daily' },
-  { name: 'Number Waffle', category: 'word', desc: 'Waffle with numbers. Swap tiles until the sums work.',
-    url: 'https://wafflegame.net/' }, // TODO verify: couldn't confirm a dedicated Number Waffle page
   { name: 'Connections',   category: 'word', desc: 'Sort 16 words into four hidden groups.',
     url: 'https://www.nytimes.com/games/connections' },
   { name: 'Strands',       category: 'word', desc: 'Find themed words and the spangram in a letter grid.',
@@ -579,6 +575,8 @@ const GAMES = [
     url: 'https://contexto.me/' },
   { name: 'Swervle',       category: 'word', desc: 'Daily word puzzle.',
     url: 'https://swervle.com/' }, // TODO verify: couldn't confirm this game's URL, category or description
+  { name: 'Pinpoint',      category: 'word', desc: 'Guess the category from as few clues as possible.',
+    url: 'https://www.linkedin.com/games/pinpoint/' },
 
   // ---- Geography ----------------------------------------------------------
   { name: 'Worldle',       category: 'geo', desc: 'Name the country from its silhouette.',
@@ -597,6 +595,8 @@ const GAMES = [
     url: 'https://www.geoguessr.com/daily-challenges' }, // TODO verify: GeoGuessr has moved this page before
   { name: 'Bordle',        category: 'geo', desc: 'Name the country from its neighbours and borders.',
     url: 'https://bordle.xyz/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Flagle',        category: 'geo',  desc: 'Reveal the flag piece by piece and name the country.',
+    url: 'https://www.flagle.io/' }, // TODO verify
 
   // ---- Maths & Logic ------------------------------------------------------
   { name: 'Nerdle',        category: 'logic', desc: 'Wordle for equations.',
@@ -615,22 +615,16 @@ const GAMES = [
     url: 'https://www.linkedin.com/games/tango/' },
   { name: 'Zip',           category: 'logic', desc: 'Draw one path through every numbered cell.',
     url: 'https://www.linkedin.com/games/zip/' },
-  { name: 'Pinpoint',      category: 'logic', desc: 'Guess the category from as few clues as possible.',
-    url: 'https://www.linkedin.com/games/pinpoint/' },
   { name: 'Binairo',       category: 'logic', desc: 'Takuzu: fill 0s and 1s with no three in a row.',
     url: 'https://www.puzzle-binairo.com/' }, // TODO verify: link to the daily puzzle if the site has one
+  { name: 'Number Waffle', category: 'logic', desc: 'Waffle with numbers. Swap tiles until the sums work.',
+    url: 'https://wafflegame.net/' }, // TODO verify: couldn't confirm a dedicated Number Waffle page
 
   // ---- Science & Engineering ----------------------------------------------
-  { name: 'Elementle',     category: 'science', desc: 'Guess the date of a historical event.',
-    url: 'https://www.elementle.com/' }, // TODO verify: couldn't confirm this URL
   { name: 'Chemdle',       category: 'science', desc: 'Guess the element on the periodic table.',
     url: 'https://chemdle.com/' }, // TODO verify: couldn't confirm this URL
   { name: 'NandGame',      category: 'science', desc: 'Build a computer from NAND gates, one logic puzzle at a time. Not a daily.',
     url: 'https://nandgame.com/' }, // Swapped in: no well-known daily logic-gate puzzle exists
-  { name: 'Pixeldle',      category: 'science', desc: 'Daily pixel-based guessing game.',
-    url: 'https://pixeldle.com/' },
-  { name: 'Pixadle',       category: 'science', desc: 'Daily pixel-based guessing game.',
-    url: 'https://www.pixadle.com/' },
 
   // ---- Trivia & General Knowledge -----------------------------------------
   { name: 'Bandle',        category: 'trivia', desc: 'Guess the song as instruments are added one by one.',
@@ -649,6 +643,12 @@ const GAMES = [
     url: 'https://wikitrivia.tomjwatson.com/' },
   { name: 'Wiki Game Daily', id: 'wiki-game', category: 'trivia', desc: 'Get between two Wikipedia pages by links alone.',
     url: 'https://www.thewikigamedaily.com/' }, // TODO verify
+  { name: 'Elementle',     category: 'trivia', desc: 'Guess the date of a historical event.',
+    url: 'https://www.elementle.com/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Pixeldle',      category: 'trivia', desc: 'Daily pixel-based guessing game.',
+    url: 'https://pixeldle.com/' },
+  { name: 'Pixadle',       category: 'trivia', desc: 'Daily pixel-based guessing game.',
+    url: 'https://www.pixadle.com/' },
 
   // ---- Sports & Pop Culture -----------------------------------------------
   { name: 'Poeltl',        category: 'sports', desc: 'Guess the NBA player from team, position and stats.',
