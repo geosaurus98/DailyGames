@@ -577,6 +577,14 @@ const GAMES = [
     url: 'https://swervle.com/' }, // TODO verify: couldn't confirm this game's URL, category or description
   { name: 'Pinpoint',      category: 'word', desc: 'Guess the category from as few clues as possible.',
     url: 'https://www.linkedin.com/games/pinpoint/' },
+  { name: 'Mini Crossword', category: 'word', desc: 'NYT 5x5 crossword, done in a couple of minutes.',
+    url: 'https://www.nytimes.com/crosswords/game/mini' },
+  { name: 'Crossclimb',    category: 'word', desc: 'Trivia clues, then order the answers into a word ladder.',
+    url: 'https://www.linkedin.com/games/crossclimb/' },
+  { name: 'Weaver',        category: 'word', desc: 'Change one letter at a time to get from one word to another.',
+    url: 'https://wordwormdormdork.com/' },
+  { name: 'Phrazle',       category: 'word', desc: 'Wordle for a whole phrase. Two puzzles a day.',
+    url: 'https://phrazle.gg/' }, // TODO verify: search showed the game at this address but not its homepage
 
   // ---- Geography ----------------------------------------------------------
   { name: 'Worldle',       category: 'geo', desc: 'Name the country from its silhouette.',
@@ -586,17 +594,23 @@ const GAMES = [
   { name: 'Wheretaken',    category: 'geo', desc: 'Where in the world was this photo taken?',
     url: 'https://wheretaken.teuteuf.fr/' },
   { name: 'Statele',       category: 'geo', desc: 'Name the US state from its shape.',
-    url: 'https://statele.teuteuf.fr/' }, // TODO verify: couldn't confirm this URL
+    url: 'https://statele.teuteuf.fr/' },
   { name: 'Tradle',        category: 'geo', desc: 'Guess the country from its export treemap.',
     url: 'https://games.oec.world/en/tradle/' },
   { name: 'Countryle',     category: 'geo', desc: 'Deduce the country from population, climate and more.',
     url: 'https://countryle.com/' },
   { name: 'GeoGuessr Daily', id: 'geoguessr', category: 'geo', desc: 'Daily challenge: five Street View rounds. Free account needed.',
-    url: 'https://www.geoguessr.com/daily-challenges' }, // TODO verify: GeoGuessr has moved this page before
-  { name: 'Bordle',        category: 'geo', desc: 'Name the country from its neighbours and borders.',
-    url: 'https://bordle.xyz/' }, // TODO verify: couldn't confirm this URL
+    url: 'https://www.geoguessr.com/daily-challenges' },
+  { name: 'Borderle', id: 'bordle', category: 'geo', desc: 'Name the two countries that share the border shown.',
+    url: 'https://borderle.com/' }, // Swapped in for "Bordle", which search couldn't find. TODO verify URL
   { name: 'Flagle',        category: 'geo',  desc: 'Reveal the flag piece by piece and name the country.',
-    url: 'https://www.flagle.io/' }, // TODO verify
+    url: 'https://www.flagle.io/' }, // TODO verify: search only confirmed flagle.org, a similar game
+  { name: 'Travle',        category: 'geo',  desc: 'Link two countries through the countries in between.',
+    url: 'https://travle.earth/' },
+  { name: 'Globle: Capitals', id: 'globle-capitals', category: 'geo', desc: 'Globle, but for capital cities.',
+    url: 'https://globle-capitals.com/' }, // TODO verify: game confirmed but not its URL
+  { name: 'GeoGrid',       category: 'geo',  desc: '3x3 grid: name a country that fits each row and column.',
+    url: 'https://www.geogridgame.com/' }, // TODO verify: game confirmed but not its URL
 
   // ---- Maths & Logic ------------------------------------------------------
   { name: 'Nerdle',        category: 'logic', desc: 'Wordle for equations.',
@@ -606,9 +620,9 @@ const GAMES = [
   { name: 'Sudoku',        category: 'logic', desc: 'NYT daily Sudoku in easy, medium and hard.',
     url: 'https://www.nytimes.com/puzzles/sudoku' },
   { name: 'Killer Sudoku', category: 'logic', desc: 'Sudoku with cage sums.',
-    url: 'https://www.dailykillersudoku.com/' }, // TODO verify
-  { name: 'Minesweeper',   category: 'logic', desc: 'Classic Minesweeper. Use the daily or quest modes.',
-    url: 'https://minesweeper.online/' }, // TODO verify: no well-known daily-only Minesweeper; check for a daily link
+    url: 'https://www.dailykillersudoku.com/' },
+  { name: 'Minesweeper',   category: 'logic', desc: 'One expert board a day, the same for everyone.',
+    url: 'https://minesweeper.now/daily' },
   { name: 'Queens',        category: 'logic', desc: 'One queen per row, column and colour region.',
     url: 'https://www.linkedin.com/games/queens/' },
   { name: 'Tango',         category: 'logic', desc: 'Balance suns and moons in a grid.',
@@ -616,51 +630,71 @@ const GAMES = [
   { name: 'Zip',           category: 'logic', desc: 'Draw one path through every numbered cell.',
     url: 'https://www.linkedin.com/games/zip/' },
   { name: 'Binairo',       category: 'logic', desc: 'Takuzu: fill 0s and 1s with no three in a row.',
-    url: 'https://www.puzzle-binairo.com/' }, // TODO verify: link to the daily puzzle if the site has one
+    url: 'https://www.sudokuwiki.org/DailyBinairo' },
   { name: 'Number Waffle', category: 'logic', desc: 'Waffle with numbers. Swap tiles until the sums work.',
-    url: 'https://wafflegame.net/' }, // TODO verify: couldn't confirm a dedicated Number Waffle page
+    url: 'https://wafflegame.net/' }, // TODO verify: the game exists (by the Waffle makers) but search didn't show its URL
+  { name: 'Primel',        category: 'logic', desc: 'Wordle with five-digit prime numbers.',
+    url: 'https://converged.yt/primel/' }, // TODO verify: the creator's site; copies also run at primel.pages.dev
+  { name: 'Mini Sudoku',   category: 'logic', desc: 'LinkedIn 6x6 Sudoku, about two minutes.',
+    url: 'https://www.linkedin.com/games/mini-sudoku/' },
+  { name: 'Nonograms',     category: 'logic', desc: 'Fill cells from the number clues to reveal a picture.',
+    url: 'https://www.puzzle-nonograms.com/' },
 
   // ---- Science & Engineering ----------------------------------------------
-  { name: 'Chemdle',       category: 'science', desc: 'Guess the element on the periodic table.',
-    url: 'https://chemdle.com/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Chemdle',       category: 'science', desc: 'Daily chemistry puzzle: work out the molecule, atom by atom.',
+    url: 'https://chemdle.com/' }, // TODO verify: game confirmed (Chemistry World review) but not its URL
   { name: 'NandGame',      category: 'science', desc: 'Build a computer from NAND gates, one logic puzzle at a time. Not a daily.',
     url: 'https://nandgame.com/' }, // Swapped in: no well-known daily logic-gate puzzle exists
+  { name: 'Hexcodle',      category: 'science', desc: 'Guess the colour\'s hex code from hot/cold hints.',
+    url: 'https://hexcodle.com/' },
+  { name: 'Metazooa',      category: 'science', desc: 'Find the mystery animal by moving through its taxonomy.',
+    url: 'https://metazooa.com/' },
+  { name: 'Metaflora',     category: 'science', desc: 'Find the mystery plant by moving through its taxonomy.',
+    url: 'https://metaflora.com/' }, // TODO verify: game confirmed (same makers as Metazooa) but not its URL
 
   // ---- Trivia & General Knowledge -----------------------------------------
   { name: 'Bandle',        category: 'trivia', desc: 'Guess the song as instruments are added one by one.',
     url: 'https://bandle.app/' },
   { name: 'Heardle',       category: 'trivia', desc: 'Guess the song from the opening seconds.',
-    url: 'https://www.heardle.app/' }, // TODO verify: the original Heardle closed in 2023; pick the clone you like
+    url: 'https://www.heardle.app/' }, // TODO verify: Spotify shut down the original in 2023, so this may be offline. Bandle is the closest live alternative
   { name: 'Framed',        category: 'trivia', desc: 'Guess the film from six stills.',
     url: 'https://framed.wtf/' },
   { name: 'Moviedle',      category: 'trivia', desc: 'Guess the movie from a one-second clip that gets longer.',
-    url: 'https://moviedle.app/' }, // TODO verify
+    url: 'https://moviedle.app/' },
   { name: 'Costcodle',     category: 'trivia', desc: 'Guess the price of a Costco product.',
-    url: 'https://costcodle.com/' }, // TODO verify
+    url: 'https://costcodle.com/' },
   { name: 'TimeGuessr',    category: 'trivia', desc: 'Guess the year and location of a photo.',
     url: 'https://timeguessr.com/' },
   { name: 'Wikitrivia',    category: 'trivia', desc: 'Place Wikipedia events in date order. Not a daily.',
     url: 'https://wikitrivia.tomjwatson.com/' },
   { name: 'Wiki Game Daily', id: 'wiki-game', category: 'trivia', desc: 'Get between two Wikipedia pages by links alone.',
-    url: 'https://www.thewikigamedaily.com/' }, // TODO verify
+    url: 'https://www.thewikigamedaily.com/' }, // TODO verify: game confirmed but not its URL
   { name: 'Elementle',     category: 'trivia', desc: 'Guess the date of a historical event.',
-    url: 'https://www.elementle.com/' }, // TODO verify: couldn't confirm this URL
+    url: 'https://www.elementle.com/' }, // TODO verify: search only found an iPhone app, so this may be app-only
   { name: 'Pixeldle',      category: 'trivia', desc: 'Daily pixel-based guessing game.',
     url: 'https://pixeldle.com/' },
   { name: 'Pixadle',       category: 'trivia', desc: 'Daily pixel-based guessing game.',
     url: 'https://www.pixadle.com/' },
+  { name: 'Chronophoto',   category: 'trivia', desc: 'Guess the year each photo was taken.',
+    url: 'https://www.chronophoto.app/' }, // TODO verify: game confirmed but not its URL
+  { name: 'GuessThe.Game', id: 'guess-the-game', category: 'trivia', desc: 'Name the video game from its screenshots.',
+    url: 'https://guessthe.game/' },
+  { name: 'Spotle',        category: 'trivia', desc: 'Guess the music artist from genre, debut year and more.',
+    url: 'https://spotle.io/' },
 
   // ---- Sports & Pop Culture -----------------------------------------------
   { name: 'Poeltl',        category: 'sports', desc: 'Guess the NBA player from team, position and stats.',
-    url: 'https://poeltl.nbpa.com/' }, // TODO verify: Poeltl moved to the NBPA site
+    url: 'https://poeltl.nbpa.com/' },
   { name: 'Immaculate Grid', category: 'sports', desc: 'Fill a 3x3 grid with players who fit both criteria.',
     url: 'https://www.immaculategrid.com/' },
-  { name: 'Football Grid', category: 'sports', desc: 'Immaculate Grid-style daily grid for football players.',
-    url: 'https://www.footballgrid.com/' }, // TODO verify: couldn't confirm a football grid URL
+  { name: 'Soccer Grid', id: 'football-grid', category: 'sports', desc: 'Immaculate Grid for football: players who fit both clues.',
+    url: 'https://www.renderfoot.com/games/soccer-grid' },
+  { name: 'Tiki-Taka-Toe', category: 'sports', desc: 'Football noughts and crosses: name a player who fits both clues.',
+    url: 'https://www.renderfoot.com/games/tic-tac-toe' },
   { name: 'Actorle',       category: 'sports', desc: 'Guess the actor from their filmography.',
     url: 'https://actorle.com/' },
-  { name: 'Cinematrix',    category: 'sports', desc: 'Grid puzzle linking actors and movies.',
-    url: 'https://cinematrix.app/' }, // TODO verify: couldn't confirm this URL
+  { name: 'Cinematrix',    category: 'sports', desc: "Vulture's daily movie grid: films that fit each actor and clue.",
+    url: 'https://www.vulture.com/' }, // TODO verify: Cinematrix is on Vulture, but search didn't show the direct page
 ];
 
 /* ==========================================================================
